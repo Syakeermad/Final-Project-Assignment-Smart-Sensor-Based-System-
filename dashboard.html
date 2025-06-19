@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Room Logger Dashboard</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background: #101010;
+      color: #f1f1f1;
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      padding: 20px;
+      margin: 0;
+    }
+    h1 {
+      color: #00e676;
+      margin-bottom: 25px;
+      text-shadow: 0 0 10px #00e676;
+    }
+    .card {
+      background: #1c1c1c;
+      padding: 25px;
+      border-radius: 15px;
+      margin: 20px auto;
+      max-width: 400px;
+      box-shadow: 0 0 20px rgba(0,255,140,0.2);
+      transition: 0.3s;
+    }
+    .card:hover {
+      transform: scale(1.02);
+      box-shadow: 0 0 30px rgba(0,255,140,0.4);
+    }
+    h2 {
+      font-size: 26px;
+      margin: 10px 0;
+    }
+    .value {
+      font-size: 36px;
+      color: #00e676;
+      text-shadow: 0 0 8px #00e676;
+    }
+    canvas {
+      display: block;
+      max-width: 400px;
+      max-height: 250px;
+      margin: 20px auto;
+    }
+    footer {
+      margin-top: 40px;
+      color: #666;
+      font-size: 14px;
+    }
+    #alertBanner {
+      display: none;
+      background: #e53935;
+      color: white;
+      padding: 15px;
+      margin: 10px auto;
+      max-width: 500px;
+      border-radius: 8px;
+      font-size: 18px;
+      box-shadow: 0 0 15px rgba(255,0,0,0.5);
+      text-shadow: 0 0 5px #ff1744;
+    }
+  </style>
+</head>
+<body>
+
+<h1>🚪 Room Logger Dashboard</h1>
+
+<div id="alertBanner">🚨 Alert: Person detected nearby!</div>
+
+<div class="card">
+  <h2>Entry Count</h2>
+  <div class="value" id="entryCount">0</div>
+</div>
+
+<div class="card">
+  <h2>Distance</h2>
+  <div class="value" id="distance">0 cm</div>
+</div>
+
+<canvas id="distanceChart"></canvas>
+
+<footer>&copy; 2024 Syakeer Ahmad</footer>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyB3fAXrWgKzznj1duGyJUjL3R27CClI44Y",
+    databaseURL: "https://room-entry-logger-default-rtdb.asia-southeast1.firebasedatabase.app/"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  db.ref("RoomLogger/entryCount").on("value", snapshot => {
+    document.getElementById("entryCount").innerText = snapshot.val();
+  });
+
+  const distanceDisplay = document.getElementById("distance");
+  const alertBanner = document.getElementById("alertBanner");
+
+  const ctx = document.getElementById("distanceChart").getContext("2d");
+  const distanceChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Distance (cm)',
+        data: [],
+        borderColor: '#00e676',
+        backgroundColor: 'rgba(0, 230, 118, 0.1)',
+        tension: 0.35,
+        pointRadius: 3,
+        pointBackgroundColor: '#00e676'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: '#ccc' } }
+      },
+      scales: {
+        x: { ticks: { color: '#ccc' }, grid: { color: '#222' }, display: false },
+        y: { ticks: { color: '#ccc' }, grid: { color: '#222' }, beginAtZero: true }
+      }
+    }
+  });
+
+  db.ref("RoomLogger/distance").on("value", snapshot => {
+    const value = snapshot.val();
+    distanceDisplay.innerText = value + " cm";
+
+    const timeLabel = new Date().toLocaleTimeString();
+    distanceChart.data.labels.push(timeLabel);
+    distanceChart.data.datasets[0].data.push(value);
+
+    if (distanceChart.data.labels.length > 25) {
+      distanceChart.data.labels.shift();
+      distanceChart.data.datasets[0].data.shift();
+    }
+
+    distanceChart.update();
+
+    // Show alert if distance < 20 cm
+    if (value < 20) {
+      alertBanner.style.display = "block";
+    } else {
+      alertBanner.style.display = "none";
+    }
+  });
+</script>
+
+</body>
+</html>
